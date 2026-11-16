@@ -441,18 +441,27 @@ const workingEnvID = computed(() => {
 const getCurrentValue = (id: string | "Global", varIndex: number) => {
   const env = workingEnv.value?.variables[varIndex]
   if (env?.secret) {
-    return secretEnvironmentService.getSecretEnvironmentVariable(id, varIndex)
-      ?.value
+    return secretEnvironmentService.getSecretEnvironmentVariable(
+      id,
+      varIndex,
+      env.key
+    )?.value
   }
-  return currentEnvironmentValueService.getEnvironmentVariable(id, varIndex)
-    ?.currentValue
+  return currentEnvironmentValueService.getEnvironmentVariable(
+    id,
+    varIndex,
+    env?.key
+  )?.currentValue
 }
 
 const getInitialValue = (id: string | "Global", varIndex: number) => {
   const env = workingEnv.value?.variables[varIndex]
   if (env?.secret) {
-    return secretEnvironmentService.getSecretEnvironmentVariable(id, varIndex)
-      ?.initialValue
+    return secretEnvironmentService.getSecretEnvironmentVariable(
+      id,
+      varIndex,
+      env.key
+    )?.initialValue
   }
   return env?.initialValue
 }
@@ -466,9 +475,11 @@ watch(
         ? "secret"
         : "variables"
 
-      if (props.editingEnvironmentIndex !== "Global") {
-        editingID.value = workingEnvID.value
-      }
+      // Reset on every open: this modal instance is reused, so a stale ID from
+      // a previously edited env would make a Global save write its re-indexed
+      // secrets/current values under that env instead of "Global".
+      editingID.value =
+        props.editingEnvironmentIndex === "Global" ? "" : workingEnvID.value
       vars.value = pipe(
         workingEnv.value?.variables ?? [],
         A.mapWithIndex((index, e) => ({

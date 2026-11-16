@@ -3315,7 +3315,8 @@ export class AIChatService extends Service {
         const value =
           this.secretEnvironmentService.getSecretEnvironmentVariableValue(
             envID,
-            index
+            index,
+            variable.key
           )
         return {
           ...variable,
@@ -3326,7 +3327,8 @@ export class AIChatService extends Service {
 
       const value = this.currentEnvironmentValueService.getEnvironmentVariable(
         envID,
-        index
+        index,
+        variable.key
       )
       return {
         ...variable,

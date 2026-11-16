@@ -337,14 +337,16 @@ const updateEnvironments = (
  */
 const getSecretEnvironmentVariableValue = (
   envID: string,
-  index: number
+  index: number,
+  key?: string
 ): {
   value: string
   initialValue?: string
 } | null => {
   return secretEnvironmentService.getSecretEnvironmentVariableValue(
     envID,
-    index
+    index,
+    key
   )
 }
 
@@ -357,11 +359,13 @@ const getSecretEnvironmentVariableValue = (
  */
 const getEnvironmentVariableValue = (
   envID: string,
-  index: number
+  index: number,
+  key?: string
 ): string | undefined => {
   return currentEnvironmentValueService.getEnvironmentVariableValue(
     envID,
-    index
+    index,
+    key
   )
 }
 
@@ -1181,14 +1185,14 @@ const resolveEnvVars = (
 ): Environment["variables"] =>
   vars.map((v, index) => {
     const secretMeta = v.secret
-      ? getSecretEnvironmentVariableValue(envID, index)
+      ? getSecretEnvironmentVariableValue(envID, index, v.key)
       : null
     return {
       ...v,
       currentValue:
         (v.secret
           ? secretMeta?.value
-          : getEnvironmentVariableValue(envID, index)) ?? "",
+          : getEnvironmentVariableValue(envID, index, v.key)) ?? "",
       // For a secret, use the secret store's initialValue (falling back to the
       // definition's when the store has no entry); for a non-secret, use the
       // definition's initialValue directly. The old `: ""` branch produced a

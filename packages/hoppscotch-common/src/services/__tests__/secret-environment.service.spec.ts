@@ -69,6 +69,42 @@ describe("SecretEnvironmentService", () => {
 
       expect(result).toBeUndefined()
     })
+
+    it("should never return another variable's secret when the key at the index differs", () => {
+      const id = "testEnvironment"
+      // Slots recorded for [removed, token, apiKey] — the row above `token`
+      // was then deleted, so `token` now sits at 0 and `apiKey` at 1.
+      const secretVars = [
+        { key: "token", value: "token-value", varIndex: 1 },
+        { key: "apiKey", value: "api-value", varIndex: 2 },
+      ]
+
+      service.secretEnvironments.set(id, secretVars)
+
+      expect(service.getSecretEnvironmentVariable(id, 0, "token")).toEqual(
+        secretVars[0]
+      )
+      expect(service.getSecretEnvironmentVariable(id, 1, "apiKey")).toEqual(
+        secretVars[1]
+      )
+      expect(
+        service.getSecretEnvironmentVariable(id, 1, "other")
+      ).toBeUndefined()
+    })
+
+    it("should prefer the entry at the index when its key matches", () => {
+      const id = "testEnvironment"
+      const secretVars = [
+        { key: "dup", value: "first", varIndex: 0 },
+        { key: "dup", value: "second", varIndex: 1 },
+      ]
+
+      service.secretEnvironments.set(id, secretVars)
+
+      expect(service.getSecretEnvironmentVariable(id, 1, "dup")).toEqual(
+        secretVars[1]
+      )
+    })
   })
 
   describe("getSecretEnvironmentVariableValue", () => {
