@@ -1,7 +1,12 @@
 import { Cookie, HoppRESTRequest } from "@hoppscotch/data"
 import { CageModuleCtx, defineSandboxFn } from "faraday-cage/modules"
 
-import { TestResult, BaseInputs, SandboxValue } from "~/types"
+import {
+  TestResult,
+  BaseInputs,
+  SandboxValue,
+  EnvironmentVariable,
+} from "~/types"
 import {
   getSharedCookieMethods,
   getSharedEnvMethods,
@@ -20,6 +25,8 @@ type BaseInputsConfig = {
    * See `getSharedEnvMethods()` for detailed explanation of the type flow.
    */
   envs: TestResult["envs"]
+  // Request/collection variables, used only for template resolution
+  scopedVariables?: EnvironmentVariable[]
   request: HoppRESTRequest
   cookies: Cookie[] | null
   getUpdatedRequest?: () => HoppRESTRequest
@@ -37,7 +44,7 @@ export const createBaseInputs = (
     methods: envMethods,
     pmSetAny,
     updatedEnvs,
-  } = getSharedEnvMethods(config.envs, true)
+  } = getSharedEnvMethods(config.envs, true, config.scopedVariables)
 
   const { methods: cookieMethods, getUpdatedCookies } = getSharedCookieMethods(
     config.cookies

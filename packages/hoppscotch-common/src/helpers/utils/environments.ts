@@ -1,22 +1,19 @@
 import { Environment, HoppRESTRequestVariable } from "@hoppscotch/data"
 import { cloneDeep } from "lodash-es"
 
-import { getService } from "~/modules/dioc"
 import {
   getCurrentEnvironment,
   getGlobalVariables,
   AggregateEnvironment,
+  resolveEnvironmentVariableValues,
 } from "~/newstore/environments"
-import { CurrentValueService } from "~/services/current-environment-value.service"
-import { SecretEnvironmentService } from "~/services/secret-environment.service"
 import { HoppInheritedProperty } from "~/helpers/types/HoppInheritedProperties"
 import { transformInheritedCollectionVariablesToAggregateEnv } from "./inheritedCollectionVarTransformer"
 
-const secretEnvironmentService = getService(SecretEnvironmentService)
-const currentEnvironmentValueService = getService(CurrentValueService)
-
 /**
- * Populate the currentValue of the environment variables and set the secret values
+ * Populate the currentValue of the environment variables and set the secret values.
+ * Uses the same resolver as the editor aggregates, so the value sent with the
+ * request matches what the variable hover shows.
  * @param selected
  * @param global
  * @returns
@@ -24,60 +21,16 @@ const currentEnvironmentValueService = getService(CurrentValueService)
 const unWrapEnvironments = (
   selected: Environment,
   global: Environment["variables"]
-) => {
-  const resolvedGlobalWithSecrets = global.map((globalVar, index) => {
-    const secretVar = secretEnvironmentService.getSecretEnvironmentVariable(
-      "Global",
-      index
-    )
-    const currentVar = currentEnvironmentValueService.getEnvironmentVariable(
-      "Global",
-      index
-    )
-
-    if (secretVar) {
-      return {
-        ...globalVar,
-        currentValue: secretVar.value,
-        initialValue: secretVar.initialValue ?? "",
-      }
-    }
-    return {
-      ...globalVar,
-      currentValue: currentVar?.currentValue || globalVar.currentValue || "",
-    }
-  })
-
-  const resolvedSelectedWithSecrets = selected.variables.map(
-    (selectedVar, index) => {
-      const secretVar = secretEnvironmentService.getSecretEnvironmentVariable(
-        selected.id,
-        index
-      )
-      const currentVar = currentEnvironmentValueService.getEnvironmentVariable(
-        selected.id,
-        index
-      )
-      if (secretVar) {
-        return {
-          ...selectedVar,
-          currentValue: secretVar.value,
-          initialValue: secretVar.initialValue ?? "",
-        }
-      }
-      return {
-        ...selectedVar,
-        currentValue:
-          currentVar?.currentValue || selectedVar.currentValue || "",
-      }
-    }
-  )
-
-  return {
-    global: resolvedGlobalWithSecrets,
-    selected: resolvedSelectedWithSecrets,
-  }
-}
+) => ({
+  global: global.map((globalVar, index) => ({
+    ...globalVar,
+    ...resolveEnvironmentVariableValues("Global", globalVar, index),
+  })),
+  selected: selected.variables.map((selectedVar, index) => ({
+    ...selectedVar,
+    ...resolveEnvironmentVariableValues(selected.id, selectedVar, index),
+  })),
+})
 
 export const getCombinedEnvVariables = (temp?: Environment["variables"]) => {
   const reformedVars = unWrapEnvironments(

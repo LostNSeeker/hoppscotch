@@ -10,6 +10,7 @@ import { pipe } from "fp-ts/lib/function"
 import { cloneDeep } from "lodash-es"
 
 import {
+  EnvironmentVariable,
   Expectation,
   TestDescriptor,
   TestResult,
@@ -130,12 +131,38 @@ const unsetEnv = (
 }
 
 /**
+ * Builds the variable list for resolving `<<var>>` templates the same way the
+ * request does: scoped (request → collection) variables ahead of the
+ * environments, de-duplicated by key so an empty higher-precedence variable
+ * falls through to a lower-precedence one (mirrors hoppscotch-common's
+ * `filterNonEmptyEnvironmentVariables`).
+ */
+const getTemplateVariables = (
+  scopedVariables: EnvironmentVariable[],
+  envVars: SandboxEnvironmentVariable[]
+) => {
+  const hasEffectiveValue = (v: SandboxEnvironmentVariable) =>
+    Boolean(v.currentValue || v.initialValue)
+
+  const byKey = new Map<string, SandboxEnvironmentVariable>()
+  ;[...scopedVariables, ...envVars].forEach((v) => {
+    const existing = byKey.get(v.key)
+    if (!existing || (!hasEffectiveValue(existing) && hasEffectiveValue(v))) {
+      byKey.set(v.key, v)
+    }
+  })
+
+  return Array.from(byKey.values())
+}
+
+/**
  * Compiles shared scripting API methods (scoped to environments) for use in both pre and post request scripts
  * Experimental sandbox version - Returns methods organized by namespace (`pw` and `hopp`)
  */
 export function getSharedEnvMethods(
   envs: TestResult["envs"],
-  isHoppNamespace: true
+  isHoppNamespace: true,
+  scopedVariables?: EnvironmentVariable[]
 ): {
   methods: {
     pw: {
@@ -166,7 +193,8 @@ export function getSharedEnvMethods(
  */
 export function getSharedEnvMethods(
   envs: TestResult["envs"],
-  isHoppNamespace?: false
+  isHoppNamespace?: false,
+  scopedVariables?: EnvironmentVariable[]
 ): {
   methods: {
     env: {
@@ -185,7 +213,8 @@ export function getSharedEnvMethods(
 
 export function getSharedEnvMethods(
   envs: TestResult["envs"],
-  isHoppNamespace = false
+  isHoppNamespace = false,
+  scopedVariables: EnvironmentVariable[] = []
 ): unknown {
   /**
    * Type assertion explanation:
@@ -261,10 +290,15 @@ export function getSharedEnvMethods(
     const shouldIncludeSelected = ["all", "active"].includes(options.source)
     const shouldIncludeGlobal = ["all", "global"].includes(options.source)
 
-    const envVars = [
-      ...(shouldIncludeSelected ? updatedEnvs.selected : []),
-      ...(shouldIncludeGlobal ? updatedEnvs.global : []),
-    ]
+    // Nested templates resolve like the request does, so request/collection
+    // variables apply only when the lookup isn't restricted to one env scope.
+    const envVars = getTemplateVariables(
+      options.source === "all" ? scopedVariables : [],
+      [
+        ...(shouldIncludeSelected ? updatedEnvs.selected : []),
+        ...(shouldIncludeGlobal ? updatedEnvs.global : []),
+      ]
+    )
 
     const result = pipe(
       getEnv(key, updatedEnvs, options),
@@ -361,10 +395,13 @@ export function getSharedEnvMethods(
     }
 
     const result = pipe(
-      parseTemplateStringE(value, [
-        ...updatedEnvs.selected,
-        ...updatedEnvs.global,
-      ]),
+      parseTemplateStringE(
+        value,
+        getTemplateVariables(scopedVariables, [
+          ...updatedEnvs.selected,
+          ...updatedEnvs.global,
+        ])
+      ),
       E.getOrElse(() => value)
     )
 
@@ -914,10 +951,18 @@ export const createExpectation = (
 /**
  * Compiles methods for use under the `pw` namespace for pre request scripts
  * @param envs The current state of the environment variables
+ * @param scopedVariables Request/collection variables, used only for template resolution
  * @returns Object with methods in the `pw` namespace
  */
-export const getPreRequestScriptMethods = (envs: TestResult["envs"]) => {
-  const { methods, updatedEnvs } = getSharedEnvMethods(cloneDeep(envs))
+export const getPreRequestScriptMethods = (
+  envs: TestResult["envs"],
+  scopedVariables: EnvironmentVariable[] = []
+) => {
+  const { methods, updatedEnvs } = getSharedEnvMethods(
+    cloneDeep(envs),
+    false,
+    scopedVariables
+  )
   return { pw: methods, updatedEnvs }
 }
 

@@ -508,3 +508,63 @@ describe("getSharedEnvMethods - Legacy Sandbox (isHoppNamespace=false)", () => {
     expect(methods.env.set).toBeDefined()
   })
 })
+
+describe("getSharedEnvMethods - scoped (request/collection) variables", () => {
+  const variable = (key: string, value: string) => ({
+    key,
+    currentValue: value,
+    initialValue: value,
+    secret: false,
+  })
+
+  const envs = (): TestResult["envs"] => ({
+    global: [variable("base", "global.example.com")],
+    selected: [
+      variable("base", "selected.example.com"),
+      variable("apiUrl", "https://<<base>>/api"),
+    ],
+  })
+
+  test("resolve prefers a scoped variable over env variables of the same name", () => {
+    const { methods } = getSharedEnvMethods(envs(), true, [
+      variable("base", "request.example.com"),
+    ])
+
+    expect(methods.pw.resolve("<<base>>")).toBe("request.example.com")
+  })
+
+  test("resolve falls through an empty scoped variable to the env", () => {
+    const { methods } = getSharedEnvMethods(envs(), false, [
+      variable("base", ""),
+    ])
+
+    expect(methods.env.resolve("<<base>>")).toBe("selected.example.com")
+  })
+
+  test("getResolve looks up the env key but resolves nested templates with scoped variables", () => {
+    const { methods } = getSharedEnvMethods(envs(), true, [
+      variable("base", "request.example.com"),
+    ])
+
+    expect(methods.pw.get("base")).toBe("selected.example.com")
+    expect(methods.pw.getResolve("apiUrl")).toBe(
+      "https://request.example.com/api"
+    )
+    expect(methods.pw.getResolve("apiUrl", { source: "active" })).toBe(
+      "https://selected.example.com/api"
+    )
+  })
+
+  test("scoped variables are read-only and not written back to envs", () => {
+    const { methods, updatedEnvs } = getSharedEnvMethods(envs(), true, [
+      variable("base", "request.example.com"),
+    ])
+
+    methods.pw.set("base", "updated.example.com")
+
+    expect(updatedEnvs.selected[0].currentValue).toBe("updated.example.com")
+    expect(updatedEnvs.selected).toHaveLength(2)
+    expect(updatedEnvs.global).toHaveLength(1)
+    expect(methods.pw.resolve("<<base>>")).toBe("request.example.com")
+  })
+})

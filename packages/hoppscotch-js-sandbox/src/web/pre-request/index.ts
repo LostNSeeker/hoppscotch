@@ -2,6 +2,7 @@ import { ConsoleEntry } from "faraday-cage/modules"
 import * as E from "fp-ts/Either"
 import { cloneDeep } from "lodash"
 import {
+  EnvironmentVariable,
   HoppFetchHook,
   RunPreRequestScriptOptions,
   SandboxPreRequestResult,
@@ -16,7 +17,8 @@ import Worker from "./worker?worker&inline"
 
 const runPreRequestScriptWithWebWorker = (
   preRequestScript: string,
-  envs: TestResult["envs"]
+  envs: TestResult["envs"],
+  scopedVariables: EnvironmentVariable[]
 ): Promise<E.Either<string, SandboxPreRequestResult>> => {
   return new Promise((resolve) => {
     const worker = new Worker()
@@ -31,6 +33,7 @@ const runPreRequestScriptWithWebWorker = (
     worker.postMessage({
       preRequestScript,
       envs,
+      scopedVariables,
     })
   })
 }
@@ -44,6 +47,7 @@ const executePreRequestOnCage = async (
   cage: Awaited<ReturnType<typeof acquireCage>>,
   preRequestScript: string,
   envs: TestResult["envs"],
+  scopedVariables: EnvironmentVariable[],
   request: HoppRESTRequest,
   cookies: Cookie[] | null,
   hoppFetchHook?: HoppFetchHook
@@ -68,6 +72,7 @@ const executePreRequestOnCage = async (
     preRequestModule(
       {
         envs: cloneDeep(envs),
+        scopedVariables: cloneDeep(scopedVariables),
         request: cloneDeep(request),
         cookies: cookies ? cloneDeep(cookies) : null,
         handleSandboxResults: ({ envs, request, cookies }) => {
@@ -132,6 +137,7 @@ const executePreRequestOnCage = async (
 const runPreRequestScriptWithFaradayCage = async (
   preRequestScript: string,
   envs: TestResult["envs"],
+  scopedVariables: EnvironmentVariable[],
   request: HoppRESTRequest,
   cookies: Cookie[] | null,
   hoppFetchHook?: HoppFetchHook
@@ -143,6 +149,7 @@ const runPreRequestScriptWithFaradayCage = async (
       cage,
       preRequestScript,
       envs,
+      scopedVariables,
       request,
       cookies,
       hoppFetchHook
@@ -158,6 +165,7 @@ const runPreRequestScriptWithFaradayCage = async (
       freshCage,
       preRequestScript,
       envs,
+      scopedVariables,
       request,
       cookies,
       hoppFetchHook
@@ -182,7 +190,11 @@ export const runPreRequestScript = (
   preRequestScript: string,
   options: RunPreRequestScriptOptions
 ): Promise<E.Either<string, SandboxPreRequestResult>> => {
-  const { envs, experimentalScriptingSandbox = true } = options
+  const {
+    envs,
+    scopedVariables = [],
+    experimentalScriptingSandbox = true,
+  } = options
 
   if (experimentalScriptingSandbox) {
     const { request, cookies, hoppFetchHook } = options as Extract<
@@ -193,11 +205,16 @@ export const runPreRequestScript = (
     return runPreRequestScriptWithFaradayCage(
       preRequestScript,
       envs,
+      scopedVariables,
       request,
       cookies,
       hoppFetchHook
     )
   }
 
-  return runPreRequestScriptWithWebWorker(preRequestScript, envs)
+  return runPreRequestScriptWithWebWorker(
+    preRequestScript,
+    envs,
+    scopedVariables
+  )
 }

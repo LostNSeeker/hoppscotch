@@ -188,7 +188,7 @@ export interface Expectation {
   readonly not: Expectation
 }
 
-export type RunPreRequestScriptOptions =
+export type RunPreRequestScriptOptions = (
   | {
       envs: TestResult["envs"]
       request: HoppRESTRequest
@@ -200,6 +200,15 @@ export type RunPreRequestScriptOptions =
       envs: TestResult["envs"]
       experimentalScriptingSandbox?: false
     }
+) & {
+  /**
+   * Request and collection variables, highest precedence first. Read-only and
+   * used only when resolving `<<var>>` templates (`pw.env.resolve`, nested
+   * templates in `pw.env.getResolve`), so scripts resolve to the same value the
+   * request is sent with. Env getters/setters are unaffected.
+   */
+  scopedVariables?: EnvironmentVariable[]
+}
 
 export type RunPostRequestScriptOptions =
   | {

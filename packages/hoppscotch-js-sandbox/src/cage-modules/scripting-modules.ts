@@ -8,7 +8,13 @@ import {
 import { cloneDeep } from "lodash-es"
 
 import { getStatusReason } from "~/constants/http-status-codes"
-import { BaseInputs, TestDescriptor, TestResponse, TestResult } from "~/types"
+import {
+  BaseInputs,
+  EnvironmentVariable,
+  TestDescriptor,
+  TestResponse,
+  TestResult,
+} from "~/types"
 import postRequestBootstrapCode from "../bootstrap-code/post-request?raw"
 import preRequestBootstrapCode from "../bootstrap-code/pre-request?raw"
 import { createBaseInputs } from "./utils/base-inputs"
@@ -36,6 +42,7 @@ type PostRequestModuleConfig = {
 
 type PreRequestModuleConfig = {
   envs: TestResult["envs"]
+  scopedVariables?: EnvironmentVariable[]
   request: HoppRESTRequest
   cookies: Cookie[] | null
   handleSandboxResults: ({
@@ -157,6 +164,7 @@ function createScriptingInputsObj(
     // Create base inputs with access to updated request
     const baseInputs = createBaseInputs(ctx, {
       envs: config.envs,
+      scopedVariables: preConfig.scopedVariables,
       request: config.request,
       cookies: config.cookies,
       getUpdatedRequest, // Pass the updater function for pre-request

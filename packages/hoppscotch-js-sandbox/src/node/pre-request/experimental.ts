@@ -4,7 +4,12 @@ import * as TE from "fp-ts/lib/TaskEither"
 import { cloneDeep } from "lodash"
 
 import { defaultModules, preRequestModule } from "~/cage-modules"
-import { HoppFetchHook, SandboxPreRequestResult, TestResult } from "~/types"
+import {
+  EnvironmentVariable,
+  HoppFetchHook,
+  SandboxPreRequestResult,
+  TestResult,
+} from "~/types"
 import { acquireCage, resetCage, isInfraError } from "~/utils/cage"
 
 /**
@@ -15,6 +20,7 @@ const executePreRequestOnCage = async (
   cage: Awaited<ReturnType<typeof acquireCage>>,
   preRequestScript: string,
   envs: TestResult["envs"],
+  scopedVariables: EnvironmentVariable[],
   request: HoppRESTRequest,
   cookies: Cookie[] | null,
   hoppFetchHook?: HoppFetchHook
@@ -37,6 +43,7 @@ const executePreRequestOnCage = async (
     preRequestModule(
       {
         envs: cloneDeep(envs),
+        scopedVariables: cloneDeep(scopedVariables),
         request: cloneDeep(request),
         cookies: cookies ? cloneDeep(cookies) : null,
         handleSandboxResults: ({ envs, request, cookies }) => {
@@ -100,6 +107,7 @@ const executePreRequestOnCage = async (
 export const runPreRequestScriptWithFaradayCage = (
   preRequestScript: string,
   envs: TestResult["envs"],
+  scopedVariables: EnvironmentVariable[],
   request: HoppRESTRequest,
   cookies: Cookie[] | null,
   hoppFetchHook?: HoppFetchHook
@@ -113,6 +121,7 @@ export const runPreRequestScriptWithFaradayCage = (
           cage,
           preRequestScript,
           envs,
+          scopedVariables,
           request,
           cookies,
           hoppFetchHook
@@ -128,6 +137,7 @@ export const runPreRequestScriptWithFaradayCage = (
           freshCage,
           preRequestScript,
           envs,
+          scopedVariables,
           request,
           cookies,
           hoppFetchHook

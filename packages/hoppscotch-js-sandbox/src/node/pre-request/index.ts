@@ -8,7 +8,11 @@ export const runPreRequestScript = (
   preRequestScript: string,
   options: RunPreRequestScriptOptions
 ): TE.TaskEither<string, SandboxPreRequestResult> => {
-  const { envs, experimentalScriptingSandbox = true } = options
+  const {
+    envs,
+    scopedVariables = [],
+    experimentalScriptingSandbox = true,
+  } = options
 
   if (experimentalScriptingSandbox) {
     const { request, cookies, hoppFetchHook } = options as Extract<
@@ -19,6 +23,7 @@ export const runPreRequestScript = (
     return runPreRequestScriptWithFaradayCage(
       preRequestScript,
       envs,
+      scopedVariables,
       request,
       cookies,
       hoppFetchHook
@@ -30,7 +35,11 @@ export const runPreRequestScript = (
     TE.tryCatch(
       async () => {
         const { runPreRequestScriptWithIsolatedVm } = await import("./legacy")
-        return runPreRequestScriptWithIsolatedVm(preRequestScript, envs)
+        return runPreRequestScriptWithIsolatedVm(
+          preRequestScript,
+          envs,
+          scopedVariables
+        )
       },
       (error) => `Legacy sandbox execution failed: ${error}`
     ),

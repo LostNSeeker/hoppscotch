@@ -377,7 +377,10 @@ export const delegatePreRequestScriptRunner = (
     temp: Environment["variables"]
   },
   cookies: Cookie[] | null,
-  inheritedPreRequestScripts: string[] = []
+  inheritedPreRequestScripts: string[] = [],
+  // Request-scoped variables (request → collection) that outrank `envs` when
+  // the script resolves `<<var>>` templates, matching the sent request
+  scopedVariables: Environment["variables"] = []
 ): Promise<E.Either<string, SandboxPreRequestResult>> => {
   const { preRequestScript } = request
   const experimentalScriptingSandbox = EXPERIMENTAL_SCRIPTING_SANDBOX.value
@@ -402,6 +405,7 @@ export const delegatePreRequestScriptRunner = (
   if (!experimentalScriptingSandbox) {
     return runPreRequestScript(combinedScript, {
       envs,
+      scopedVariables,
       experimentalScriptingSandbox: false,
     })
   }
@@ -410,6 +414,7 @@ export const delegatePreRequestScriptRunner = (
 
   return runPreRequestScript(combinedScript, {
     envs,
+    scopedVariables,
     request,
     cookies,
     experimentalScriptingSandbox: true,
@@ -549,11 +554,34 @@ export function runRESTRequest$(
     .map((s) => s.testScript)
     .filter(hasActualScript)
 
+  // Captured before the script runs so the script's `<<var>>` resolution and
+  // the sent request see the same request/collection variables
+  const finalRequestVariables: Environment["variables"] =
+    tab.value.document.request.requestVariables
+      .filter((v: HoppRESTRequestVariable) => v.active)
+      .map((v: HoppRESTRequestVariable) => ({
+        key: v.key,
+        initialValue: v.value,
+        currentValue: v.value,
+        secret: false,
+      }))
+
+  const collectionVariables =
+    transformInheritedCollectionVariablesToAggregateEnv(
+      tab.value.document.inheritedProperties?.variables || []
+    ).map(({ key, initialValue, currentValue, secret }) => ({
+      key,
+      initialValue,
+      currentValue,
+      secret,
+    }))
+
   const res = delegatePreRequestScriptRunner(
     resolvedRequest,
     initialEnvs,
     cookieJarEntries,
-    inheritedPreRequestScripts
+    inheritedPreRequestScripts,
+    [...finalRequestVariables, ...collectionVariables]
   ).then(async (preRequestScriptResult) => {
     if (cancelCalled) return E.left("cancellation" as const)
 
@@ -561,31 +589,6 @@ export function runRESTRequest$(
       console.error("[Pre-Request Script Error]", preRequestScriptResult.left)
       return E.left("script_fail" as const)
     }
-
-    const finalRequestVariables =
-      tab.value.document.request.requestVariables.map(
-        (v: HoppRESTRequestVariable) => {
-          if (v.active) {
-            return {
-              key: v.key,
-              initialValue: v.value,
-              currentValue: v.value,
-              secret: false,
-            }
-          }
-          return []
-        }
-      )
-
-    const collectionVariables =
-      transformInheritedCollectionVariablesToAggregateEnv(
-        tab.value.document.inheritedProperties?.variables || []
-      ).map(({ key, initialValue, currentValue, secret }) => ({
-        key,
-        initialValue,
-        currentValue,
-        secret,
-      }))
 
     const finalRequest = applyScriptRequestUpdates(
       resolvedRequest,
@@ -597,7 +600,7 @@ export function runRESTRequest$(
 
     const finalEnvs = {
       environments: preRequestScriptResult.right.updatedEnvs,
-      requestVariables: finalRequestVariables as Environment["variables"],
+      requestVariables: finalRequestVariables,
       collectionVariables,
     }
 
@@ -962,27 +965,34 @@ export async function runTestRunnerRequest(
   // Adds ~32ms latency but ensures immediate visual feedback
   await waitForBrowserPaint()
 
+  const finalRequestVariables = pipe(
+    request.requestVariables,
+    A.filter(({ active }) => active),
+    A.map(({ key, value }) => ({
+      key,
+      initialValue: value,
+      currentValue: value,
+      secret: false,
+    }))
+  )
+
   return delegatePreRequestScriptRunner(
     request,
     initialEnvsWithIterationData,
     cookieJarEntries,
-    inheritedPreRequestScripts
+    inheritedPreRequestScripts,
+    // Same precedence as the request below: iteration → request → collection → temp
+    [
+      ...iterationVars,
+      ...finalRequestVariables,
+      ...inheritedVariables,
+      ...(!persistEnv ? getTemporaryVariables() : []),
+    ]
   ).then(async (preRequestScriptResult) => {
     if (E.isLeft(preRequestScriptResult)) {
       console.error("[Pre-Request Script Error]", preRequestScriptResult.left)
       return E.left("script_fail" as const)
     }
-
-    const finalRequestVariables = pipe(
-      request.requestVariables,
-      A.filter(({ active }) => active),
-      A.map(({ key, value }) => ({
-        key,
-        initialValue: value,
-        currentValue: value,
-        secret: false,
-      }))
-    )
 
     // Calculate the final updated request after pre-request script changes
     const finalRequest = applyScriptRequestUpdates(

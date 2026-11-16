@@ -4,7 +4,11 @@ import type ivmT from "isolated-vm"
 import { createRequire } from "module"
 
 import { getPreRequestScriptMethods } from "~/utils/shared"
-import { SandboxPreRequestResult, TestResult } from "~/types"
+import {
+  EnvironmentVariable,
+  SandboxPreRequestResult,
+  TestResult,
+} from "~/types"
 import { getSerializedAPIMethods } from "../utils"
 
 const nodeRequire = createRequire(import.meta.url)
@@ -12,7 +16,8 @@ const ivm = nodeRequire("isolated-vm")
 
 export const runPreRequestScriptWithIsolatedVm = (
   preRequestScript: string,
-  envs: TestResult["envs"]
+  envs: TestResult["envs"],
+  scopedVariables: EnvironmentVariable[] = []
 ): TE.TaskEither<string, SandboxPreRequestResult> => {
   return pipe(
     TE.tryCatch(
@@ -28,7 +33,10 @@ export const runPreRequestScriptWithIsolatedVm = (
         TE.tryCatch(
           async () => {
             const jail = context.global
-            const { pw, updatedEnvs } = getPreRequestScriptMethods(envs)
+            const { pw, updatedEnvs } = getPreRequestScriptMethods(
+              envs,
+              scopedVariables
+            )
             const serializedAPIMethods = getSerializedAPIMethods(pw)
             jail.setSync("serializedAPIMethods", serializedAPIMethods, {
               copy: true,
