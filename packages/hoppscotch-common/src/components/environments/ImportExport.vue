@@ -383,7 +383,8 @@ const handleImportToStore = async (
         if (v.secret) {
           const stored = secretEnvironmentService.getSecretEnvironmentVariable(
             "Global",
-            i
+            i,
+            v.key
           )
           return {
             ...v,
@@ -393,7 +394,8 @@ const handleImportToStore = async (
         }
         const stored = currentEnvironmentValueService.getEnvironmentVariable(
           "Global",
-          i
+          i,
+          v.key
         )
         return {
           ...v,

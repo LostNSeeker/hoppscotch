@@ -409,24 +409,28 @@ const liveEnvs = computed(() => {
 const getCurrentValue = (
   editingID: string,
   varIndex: number,
+  key: string,
   isSecret: boolean
 ) => {
   if (isSecret) {
     return secretEnvironmentService.getSecretEnvironmentVariable(
       editingID,
-      varIndex
+      varIndex,
+      key
     )?.value
   }
   return currentEnvironmentValueService.getEnvironmentVariable(
     editingID,
-    varIndex
+    varIndex,
+    key
   )?.currentValue
 }
 
-const getInitialValue = (editingID: string, varIndex: number) => {
+const getInitialValue = (editingID: string, varIndex: number, key: string) => {
   return secretEnvironmentService.getSecretEnvironmentVariable(
     editingID,
-    varIndex
+    varIndex,
+    key
   )?.initialValue
 }
 
@@ -458,10 +462,15 @@ watch(
                 getCurrentValue(
                   props.editingEnvironment?.id ?? "",
                   index,
+                  e.key,
                   e.secret
                 ) ?? e.currentValue,
               initialValue: e.secret
-                ? (getInitialValue(props.editingEnvironment?.id ?? "", index) ??
+                ? (getInitialValue(
+                    props.editingEnvironment?.id ?? "",
+                    index,
+                    e.key
+                  ) ??
                   e.initialValue ??
                   "")
                 : e.initialValue,

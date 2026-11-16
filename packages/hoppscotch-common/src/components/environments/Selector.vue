@@ -698,7 +698,11 @@ const resolveDisplayVariable = (
 ) => {
   if (variable.secret) {
     const secretValue =
-      secretEnvironmentService.getSecretEnvironmentVariableValue(envID, index)
+      secretEnvironmentService.getSecretEnvironmentVariableValue(
+        envID,
+        index,
+        variable.key
+      )
     return {
       ...variable,
       initialValue: maskSecretValue(secretValue?.initialValue),
@@ -710,7 +714,8 @@ const resolveDisplayVariable = (
     currentValue:
       currentEnvironmentValueService.getEnvironmentVariableValue(
         envID,
-        index
+        index,
+        variable.key
       ) ?? "",
   }
 }

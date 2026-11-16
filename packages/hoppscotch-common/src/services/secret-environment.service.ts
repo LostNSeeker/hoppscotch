@@ -57,19 +57,36 @@ export class SecretEnvironmentService extends Service {
    * Get a secret environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param key Key of the variable at `varIndex`. When given, an entry stored
+   * under a different key is never returned: if the slot holds another
+   * variable's secret (indices shifted after a row was removed), the entry is
+   * looked up by key instead, so a secret stays on its own name.
    */
-  public getSecretEnvironmentVariable(id: string, varIndex: number) {
+  public getSecretEnvironmentVariable(
+    id: string,
+    varIndex: number,
+    key?: string
+  ) {
     const secretVars = this.getSecretEnvironment(id)
-    return secretVars?.find((secretVar) => secretVar.varIndex === varIndex)
+    const secretVar = secretVars?.find(
+      (secretVar) => secretVar.varIndex === varIndex
+    )
+    if (key === undefined || secretVar?.key === key) return secretVar
+    return secretVars?.find((secretVar) => secretVar.key === key)
   }
 
   /**
    * Used to get the initial and current value of a secret environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param key Key of the variable at `varIndex` (see `getSecretEnvironmentVariable`)
    */
-  public getSecretEnvironmentVariableValue(id: string, varIndex: number) {
-    const secretVar = this.getSecretEnvironmentVariable(id, varIndex)
+  public getSecretEnvironmentVariableValue(
+    id: string,
+    varIndex: number,
+    key?: string
+  ) {
+    const secretVar = this.getSecretEnvironmentVariable(id, varIndex, key)
     if (!secretVar) return null
     return {
       value: secretVar.value || "",

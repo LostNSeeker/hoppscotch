@@ -72,19 +72,29 @@ export class CurrentValueService extends Service {
    * Get a environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param key Key of the variable at `varIndex`. When given, an entry stored
+   * under a different key is never returned: a mismatched slot falls back to
+   * a lookup by key, so a value stays on its own name.
    */
-  public getEnvironmentVariable(id: string, varIndex: number) {
+  public getEnvironmentVariable(id: string, varIndex: number, key?: string) {
     const vars = this.getEnvironment(id)
-    return vars?.find((v) => v.varIndex === varIndex)
+    const variable = vars?.find((v) => v.varIndex === varIndex)
+    if (key === undefined || variable?.key === key) return variable
+    return vars?.find((v) => v.key === key)
   }
 
   /**
    * Used to get the value of a environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param key Key of the variable at `varIndex` (see `getEnvironmentVariable`)
    */
-  public getEnvironmentVariableValue(id: string, varIndex: number) {
-    const variable = this.getEnvironmentVariable(id, varIndex)
+  public getEnvironmentVariableValue(
+    id: string,
+    varIndex: number,
+    key?: string
+  ) {
+    const variable = this.getEnvironmentVariable(id, varIndex, key)
     return variable?.currentValue
   }
 

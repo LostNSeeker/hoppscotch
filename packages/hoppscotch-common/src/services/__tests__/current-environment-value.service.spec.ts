@@ -58,6 +58,18 @@ describe("CurrentValueService", () => {
       service.environments.set(id, vars)
       expect(service.getEnvironmentVariable(id, 2)).toBeUndefined()
     })
+
+    it("should never return another variable's value when the key at the index differs", () => {
+      const id = "env1"
+      const vars: Variable[] = [
+        { key: "host", currentValue: "h", varIndex: 1, isSecret: false },
+        { key: "port", currentValue: "p", varIndex: 2, isSecret: false },
+      ]
+      service.environments.set(id, vars)
+      expect(service.getEnvironmentVariable(id, 0, "host")).toEqual(vars[0])
+      expect(service.getEnvironmentVariable(id, 1, "port")).toEqual(vars[1])
+      expect(service.getEnvironmentVariable(id, 1, "other")).toBeUndefined()
+    })
   })
 
   describe("getEnvironmentVariableValue", () => {

@@ -563,13 +563,15 @@ export function getAggregateEnvsWithCurrentValue() {
         currentValue =
           secretEnvironmentService.getSecretEnvironmentVariableValue(
             currentEnv.id,
-            index
+            index,
+            x.key
           )?.value ?? ""
 
         initialValue =
           secretEnvironmentService.getSecretEnvironmentVariableValue(
             currentEnv.id,
-            index
+            index,
+            x.key
           )?.initialValue ?? ""
       }
 
@@ -578,7 +580,8 @@ export function getAggregateEnvsWithCurrentValue() {
         currentValue:
           currentEnvironmentValueService.getEnvironmentVariableValue(
             currentEnv.id,
-            index
+            index,
+            x.key
           ) ?? currentValue,
         // Use the local resolved value — `x.initialValue ?? initialValue`
         // would pin `""` for stripped secrets and skip the store hydration.
@@ -594,13 +597,15 @@ export function getAggregateEnvsWithCurrentValue() {
         currentValue =
           secretEnvironmentService.getSecretEnvironmentVariableValue(
             "Global",
-            index
+            index,
+            x.key
           )?.value ?? ""
 
         initialValue =
           secretEnvironmentService.getSecretEnvironmentVariableValue(
             "Global",
-            index
+            index,
+            x.key
           )?.initialValue ?? ""
       }
       return <AggregateEnvironment>{
@@ -608,7 +613,8 @@ export function getAggregateEnvsWithCurrentValue() {
         currentValue:
           currentEnvironmentValueService.getEnvironmentVariableValue(
             "Global",
-            index
+            index,
+            x.key
           ) ?? currentValue,
         initialValue,
         secret: x.secret,
@@ -646,13 +652,15 @@ export const aggregateEnvsWithCurrentValue$: Observable<
           currentValue =
             secretEnvironmentService.getSecretEnvironmentVariableValue(
               selectedEnv.id,
-              index
+              index,
+              x.key
             )?.value ?? ""
 
           initialValue =
             secretEnvironmentService.getSecretEnvironmentVariableValue(
               selectedEnv.id,
-              index
+              index,
+              x.key
             )?.initialValue ?? ""
         }
         results.push({
@@ -660,7 +668,8 @@ export const aggregateEnvsWithCurrentValue$: Observable<
           currentValue:
             currentEnvironmentValueService.getEnvironmentVariableValue(
               selectedEnv.id,
-              index
+              index,
+              x.key
             ) ?? currentValue,
           // Use the local resolved value — see note on `aggregateEnvs$`.
           initialValue,
@@ -675,13 +684,15 @@ export const aggregateEnvsWithCurrentValue$: Observable<
           currentValue =
             secretEnvironmentService.getSecretEnvironmentVariableValue(
               "Global",
-              index
+              index,
+              x.key
             )?.value ?? ""
 
           initialValue =
             secretEnvironmentService.getSecretEnvironmentVariableValue(
               "Global",
-              index
+              index,
+              x.key
             )?.initialValue ?? ""
         }
         results.push({
@@ -689,7 +700,8 @@ export const aggregateEnvsWithCurrentValue$: Observable<
           currentValue:
             currentEnvironmentValueService.getEnvironmentVariableValue(
               "Global",
-              index
+              index,
+              x.key
             ) ?? currentValue,
           initialValue,
           secret: x.secret,
